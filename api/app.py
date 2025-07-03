@@ -96,18 +96,22 @@ async def chat(request: ChatRequest):
 @app.post("/api/rag/upload")
 async def upload_pdf(files: List[UploadFile] = File(...), api_key: str = Form(...)):
     """Upload and process multiple PDFs for RAG"""
-    if not api_key:
-        raise HTTPException(status_code=400, detail="API key is required")
-    
-    if not files:
-        raise HTTPException(status_code=400, detail="At least one PDF file is required")
-    
-    # Validate all files are PDFs
-    for file in files:
-        if not file.filename.endswith('.pdf'):
-            raise HTTPException(status_code=400, detail=f"File {file.filename} is not a PDF. Only PDF files are supported")
-    
     try:
+        print(f"Upload request received - Files: {len(files) if files else 0}, API key provided: {bool(api_key)}")
+        
+        if not api_key:
+            raise HTTPException(status_code=400, detail="API key is required")
+        
+        if not files:
+            raise HTTPException(status_code=400, detail="At least one PDF file is required")
+        
+        # Validate all files are PDFs
+        for file in files:
+            if not file.filename or not file.filename.endswith('.pdf'):
+                raise HTTPException(status_code=400, detail=f"File {file.filename or 'unknown'} is not a PDF. Only PDF files are supported")
+        
+        print(f"Processing {len(files)} PDF files...")
+        
         # Get or create RAG pipeline for this API key
         rag_pipeline = get_or_create_rag_pipeline(api_key)
         
@@ -117,13 +121,17 @@ async def upload_pdf(files: List[UploadFile] = File(...), api_key: str = Form(..
         failed_files = []
         
         # Process each PDF file
-        for file in files:
+        for i, file in enumerate(files):
             try:
+                print(f"Processing file {i+1}/{len(files)}: {file.filename}")
+                
                 # Read PDF content
                 pdf_content = await file.read()
+                print(f"Read {len(pdf_content)} bytes from {file.filename}")
                 
                 # Process PDF
                 result = await rag_pipeline.add_pdf(file.filename, pdf_content)
+                print(f"Processing result for {file.filename}: {result}")
                 
                 if result["status"] == "success":
                     successful_files.append(file.filename)
@@ -133,22 +141,27 @@ async def upload_pdf(files: List[UploadFile] = File(...), api_key: str = Form(..
                     failed_files.append(f"{file.filename}: {result['message']}")
                     
             except Exception as e:
-                print(f"Error processing file {file.filename}: {str(e)}")  # Debug logging
+                error_msg = f"Error processing file {file.filename}: {str(e)}"
+                print(error_msg)
                 import traceback
-                traceback.print_exc()  # Print full traceback
-                failed_files.append(f"{file.filename}: {str(e)}")
+                traceback.print_exc()
+                failed_files.append(error_msg)
+        
+        print(f"Upload processing complete - Success: {len(successful_files)}, Failed: {len(failed_files)}")
         
         # Prepare response
         if successful_files and not failed_files:
-            return {
+            response = {
                 "status": "success",
                 "message": f"Successfully processed {len(successful_files)} PDF(s)",
                 "successful_files": successful_files,
                 "total_chunks_created": total_chunks_created,
                 "total_characters": total_characters
             }
+            print(f"Returning success response: {response}")
+            return response
         elif successful_files and failed_files:
-            return {
+            response = {
                 "status": "partial_success",
                 "message": f"Processed {len(successful_files)} PDF(s) successfully, {len(failed_files)} failed",
                 "successful_files": successful_files,
@@ -156,13 +169,22 @@ async def upload_pdf(files: List[UploadFile] = File(...), api_key: str = Form(..
                 "total_chunks_created": total_chunks_created,
                 "total_characters": total_characters
             }
+            print(f"Returning partial success response: {response}")
+            return response
         else:
-            raise HTTPException(status_code=400, detail=f"All files failed to process: {'; '.join(failed_files)}")
+            error_detail = f"All files failed to process: {'; '.join(failed_files)}"
+            print(f"All files failed: {error_detail}")
+            raise HTTPException(status_code=400, detail=error_detail)
         
-    except HTTPException:
+    except HTTPException as he:
+        print(f"HTTP Exception in upload: {he.status_code} - {he.detail}")
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing PDFs: {str(e)}")
+        error_msg = f"Unexpected error processing PDFs: {str(e)}"
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @app.post("/api/rag/chat")
 async def rag_chat(request: RAGChatRequest):
@@ -227,6 +249,21 @@ async def clear_documents(api_key: str):
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
+
+# Test endpoint for debugging
+@app.get("/api/test")
+async def test_endpoint():
+    return {"message": "API is working", "timestamp": "2025-01-03"}
+
+@app.post("/api/test-upload")
+async def test_upload(files: List[UploadFile] = File(...), api_key: str = Form(...)):
+    """Test upload endpoint for debugging"""
+    return {
+        "files_received": len(files),
+        "file_names": [f.filename for f in files],
+        "api_key_provided": bool(api_key),
+        "status": "test_success"
+    }
 
 # Entry point for running the application directly
 if __name__ == "__main__":
