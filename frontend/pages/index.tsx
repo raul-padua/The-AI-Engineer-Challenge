@@ -29,7 +29,9 @@ export default function Home() {
   const [webResults, setWebResults] = useState(3);
 
   // In production (Vercel), always use same-origin API routes
-  const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.NEXT_PUBLIC_API_BASE_URL || '');
+  const apiBaseUrl = process.env.NODE_ENV === 'production' 
+    ? '' 
+    : (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000');
 
   // Ref to chat history container for auto-scroll
   const chatRef = useRef<HTMLDivElement>(null);
