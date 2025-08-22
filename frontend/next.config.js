@@ -3,19 +3,7 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
-  async rewrites() {
-    // Only use localhost proxy in development
-    if (process.env.NODE_ENV === 'development') {
-      return [
-        {
-          source: '/api/:path*',
-          destination: 'http://localhost:8000/api/:path*',
-        },
-      ];
-    }
-    // In production, let Vercel handle the routing
-    return [];
-  },
+  // Remove rewrites - let Vercel handle API routing via vercel.json
 };
 
 module.exports = nextConfig; 
