@@ -17,10 +17,16 @@ export default function Home() {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string; sources?: string[] }[]>([]);
   const [loading, setLoading] = useState(false);
   
-  // RAG-specific state
+  // RAG/Fusion state
   const [ragMode, setRagMode] = useState(false);
+  const [fusionMode, setFusionMode] = useState(false);
   const [documentInfo, setDocumentInfo] = useState<DocumentInfo>({ loaded_documents: [], total_chunks: 0, vector_count: 0 });
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  // Fusion settings
+  const [includeWeb, setIncludeWeb] = useState(true);
+  const [fusionK, setFusionK] = useState(6);
+  const [numQueries, setNumQueries] = useState(4);
+  const [webResults, setWebResults] = useState(3);
 
   // Ref to chat history container for auto-scroll
   const chatRef = useRef<HTMLDivElement>(null);
@@ -35,10 +41,10 @@ export default function Home() {
 
   // Load document info when API key changes
   useEffect(() => {
-    if (apiKey && ragMode) {
+    if (apiKey && (ragMode || fusionMode)) {
       loadDocumentInfo();
     }
-  }, [apiKey, ragMode]);
+  }, [apiKey, ragMode, fusionMode]);
 
   const loadDocumentInfo = async () => {
     if (!apiKey) return;
@@ -145,10 +151,37 @@ export default function Home() {
         }
 
         const result = await res.json();
-        setMessages((prev) => [...prev, { 
-          role: 'assistant', 
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
           content: result.response,
-          sources: result.sources 
+          sources: result.sources
+        }]);
+      } else if (fusionMode) {
+        // Fusion Chat (RAG-Fusion with optional web)
+        const res = await fetch(`${baseUrl}/api/rag/fusion_chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_message: userInput,
+            model,
+            api_key: apiKey,
+            k: fusionK,
+            num_queries: numQueries,
+            include_web: includeWeb,
+            web_results: webResults,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.detail || 'Fusion chat failed');
+        }
+
+        const result = await res.json();
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          content: result.response,
+          sources: result.sources
         }]);
         
       } else {
@@ -214,17 +247,17 @@ export default function Home() {
         lineHeight: 1.5,
       }}
     >
-      <h1 style={{ textAlign: 'center' }}>🦎 The AI Chameleon Assistant {ragMode ? '📄 + Documents' : ''}</h1>
+      <h1 style={{ textAlign: 'center' }}>🦎 The AI Chameleon Assistant {ragMode ? '📄 + Documents' : fusionMode ? '🧪 Fusion' : ''}</h1>
 
       {/* Mode Toggle Buttons */}
       <div style={{ textAlign: 'center', marginBottom: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
         <button
-          onClick={() => setRagMode(false)}
+          onClick={() => { setRagMode(false); setFusionMode(false); }}
           style={{
             padding: '0.75rem 1.5rem',
             fontSize: '1rem',
-            backgroundColor: !ragMode ? '#0066cc' : '#e9ecef',
-            color: !ragMode ? 'white' : '#495057',
+            backgroundColor: (!ragMode && !fusionMode) ? '#0066cc' : '#e9ecef',
+            color: (!ragMode && !fusionMode) ? 'white' : '#495057',
             border: '2px solid #0066cc',
             borderRadius: '8px',
             cursor: 'pointer',
@@ -235,7 +268,7 @@ export default function Home() {
           💬 Regular Chat
         </button>
         <button
-          onClick={() => setRagMode(true)}
+          onClick={() => { setRagMode(true); setFusionMode(false); }}
           style={{
             padding: '0.75rem 1.5rem',
             fontSize: '1rem',
@@ -249,6 +282,22 @@ export default function Home() {
           }}
         >
           📄 Upload Documents
+        </button>
+        <button
+          onClick={() => { setFusionMode(true); setRagMode(false); }}
+          style={{
+            padding: '0.75rem 1.5rem',
+            fontSize: '1rem',
+            backgroundColor: fusionMode ? '#0066cc' : '#e9ecef',
+            color: fusionMode ? 'white' : '#495057',
+            border: '2px solid #0066cc',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            minWidth: '180px',
+          }}
+        >
+          🧪 Fusion (RAG‑Fusion)
         </button>
       </div>
 
@@ -312,7 +361,7 @@ export default function Home() {
           marginBottom: '1.5rem',
         }}
       >
-        {!ragMode && (
+        {!ragMode && !fusionMode && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             Developer Message
             <textarea
@@ -339,6 +388,42 @@ export default function Home() {
           />
         </label>
       </section>
+
+      {/* Fusion Settings */}
+      {fusionMode && (
+        <section
+          style={{
+            border: '2px solid #0066cc',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            backgroundColor: '#f0f8ff',
+          }}
+        >
+          <h3 style={{ margin: '0 0 1rem 0', color: '#0066cc' }}>🧪 Fusion Settings</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              k (chunks)
+              <input type="number" value={fusionK} min={1} max={20} onChange={(e) => setFusionK(parseInt(e.target.value || '1'))} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              num_queries
+              <input type="number" value={numQueries} min={1} max={10} onChange={(e) => setNumQueries(parseInt(e.target.value || '1'))} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              include web snippets
+              <input type="checkbox" checked={includeWeb} onChange={(e) => setIncludeWeb(e.target.checked)} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              web_results
+              <input type="number" value={webResults} min={0} max={10} onChange={(e) => setWebResults(parseInt(e.target.value || '0'))} />
+            </label>
+          </div>
+          {documentInfo.loaded_documents.length === 0 && includeWeb && (
+            <p style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>ℹ️ No PDFs loaded. Fusion will use web snippets only.</p>
+          )}
+        </section>
+      )}
 
       {/* Chat history */}
       <div
@@ -409,7 +494,7 @@ export default function Home() {
       >
         <input
           type="text"
-          placeholder={ragMode ? "Ask a question about your documents..." : "Type your message..."}
+          placeholder={ragMode ? "Ask a question about your documents..." : fusionMode ? "Ask a question (fusion)..." : "Type your message..."}
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
           style={{ flex: 1, padding: '0.75rem' }}
@@ -421,14 +506,14 @@ export default function Home() {
           style={{
             padding: '0.75rem 1.5rem',
             fontWeight: 'bold',
-            backgroundColor: ragMode ? '#0066cc' : '#111',
+            backgroundColor: ragMode ? '#0066cc' : fusionMode ? '#0066cc' : '#111',
             color: '#fff',
             border: 'none',
             borderRadius: 6,
             cursor: 'pointer',
           }}
         >
-          {loading ? '...' : ragMode ? '🔍 Ask' : 'Send'}
+          {loading ? '...' : ragMode ? '🔍 Ask' : fusionMode ? '🧪 Fuse' : 'Send'}
         </button>
       </form>
       
