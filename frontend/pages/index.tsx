@@ -199,33 +199,41 @@ export default function Home() {
             messages: chatPayload,
             model,
             api_key: apiKey,
+            stream: process.env.NODE_ENV !== 'production',
           }),
         });
 
-        if (!res.ok || !res.body) {
-          throw new Error(await res.text());
-        }
+        if (process.env.NODE_ENV === 'production') {
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          setMessages((prev) => [...prev, { role: 'assistant', content: data.response || '' }]);
+          return;
+        } else {
+          if (!res.ok || !res.body) {
+            throw new Error(await res.text());
+          }
 
-        // Push placeholder assistant message (empty)
-        setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+          // Push placeholder assistant message (empty)
+          setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let assistantContent = '';
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let assistantContent = '';
 
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          const chunkValue = decoder.decode(value);
-          assistantContent += chunkValue;
-          setMessages((prev) => {
-            const updated = [...prev];
-            const lastIdx = updated.length - 1;
-            if (lastIdx >= 0) {
-              updated[lastIdx].content = assistantContent;
-            }
-            return updated;
-          });
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const chunkValue = decoder.decode(value);
+            assistantContent += chunkValue;
+            setMessages((prev) => {
+              const updated = [...prev];
+              const lastIdx = updated.length - 1;
+              if (lastIdx >= 0) {
+                updated[lastIdx].content = assistantContent;
+              }
+              return updated;
+            });
+          }
         }
       }
     } catch (error: any) {

@@ -38,6 +38,7 @@ class ChatRequest(BaseModel):
     messages: Optional[List[Dict[str, str]]] = None  # Full chat history if provided
     model: Optional[str] = "gpt-4.1-mini"   # Model name
     api_key: str                             # OpenAI API key
+    stream: Optional[bool] = True            # Whether to stream the response
 
 class RAGChatRequest(BaseModel):
     user_message: str                        # User question for RAG
@@ -75,6 +76,19 @@ async def chat(request: ChatRequest):
                 {"role": "system", "content": request.developer_message or ""},
                 {"role": "user", "content": request.user_message or ""},
             ]
+        
+        # If non-streaming requested (better for some serverless platforms)
+        if request.stream is False:
+            try:
+                resp = client.chat.completions.create(
+                    model=request.model,
+                    messages=msg_payload,
+                    stream=False
+                )
+                text = resp.choices[0].message.content or ""
+                return {"response": text}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
         
         # Create an async generator function for streaming responses
         async def generate():
