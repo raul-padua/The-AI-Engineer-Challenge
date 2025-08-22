@@ -28,6 +28,9 @@ export default function Home() {
   const [numQueries, setNumQueries] = useState(4);
   const [webResults, setWebResults] = useState(3);
 
+  // In production (Vercel), always use same-origin API routes
+  const apiBaseUrl = process.env.NODE_ENV === 'production' ? '' : (process.env.NEXT_PUBLIC_API_BASE_URL || '');
+
   // Ref to chat history container for auto-scroll
   const chatRef = useRef<HTMLDivElement>(null);
 
@@ -50,8 +53,7 @@ export default function Home() {
     if (!apiKey) return;
     
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-      const res = await fetch(`${baseUrl}/api/rag/documents?api_key=${encodeURIComponent(apiKey)}`);
+      const res = await fetch(`${apiBaseUrl}/api/rag/documents?api_key=${encodeURIComponent(apiKey)}`);
       if (res.ok) {
         const info = await res.json();
         setDocumentInfo(info);
@@ -76,8 +78,7 @@ export default function Home() {
       }
       formData.append('api_key', apiKey);
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-      const res = await fetch(`${baseUrl}/api/rag/upload`, {
+      const res = await fetch(`${apiBaseUrl}/api/rag/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -107,8 +108,7 @@ export default function Home() {
     if (!apiKey) return;
     
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-      const res = await fetch(`${baseUrl}/api/rag/documents?api_key=${encodeURIComponent(apiKey)}`, {
+      const res = await fetch(`${apiBaseUrl}/api/rag/documents?api_key=${encodeURIComponent(apiKey)}`, {
         method: 'DELETE',
       });
       
@@ -130,11 +130,10 @@ export default function Home() {
     setMessages((prev) => [...prev, { role: 'user', content: userInput }]);
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
       
       if (ragMode) {
         // RAG Chat
-        const res = await fetch(`${baseUrl}/api/rag/chat`, {
+        const res = await fetch(`${apiBaseUrl}/api/rag/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -158,7 +157,7 @@ export default function Home() {
         }]);
       } else if (fusionMode) {
         // Fusion Chat (RAG-Fusion with optional web)
-        const res = await fetch(`${baseUrl}/api/rag/fusion_chat`, {
+        const res = await fetch(`${apiBaseUrl}/api/rag/fusion_chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -192,7 +191,7 @@ export default function Home() {
           { role: 'user', content: userInput },
         ];
 
-        const res = await fetch(`${baseUrl}/api/chat`, {
+        const res = await fetch(`${apiBaseUrl}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
