@@ -45,6 +45,15 @@ class RAGChatRequest(BaseModel):
     api_key: str                             # OpenAI API key
     k: Optional[int] = 3                     # Number of chunks to retrieve
 
+class FusionChatRequest(BaseModel):
+    user_message: str                        # User question
+    model: Optional[str] = "gpt-4.1-mini"   # Model for final generation
+    api_key: str                             # OpenAI API key
+    k: Optional[int] = 5                     # Number of fused chunks to use
+    num_queries: Optional[int] = 4           # Number of query reformulations
+    include_web: Optional[bool] = False      # Include Tavily web snippets
+    web_results: Optional[int] = 3           # How many web snippets to include
+
 def get_or_create_rag_pipeline(api_key: str) -> RAGPipeline:
     """Get existing RAG pipeline or create new one for the API key"""
     if api_key not in rag_pipelines:
@@ -223,6 +232,48 @@ async def rag_chat(request: RAGChatRequest):
             "sources": [chunk[:100] + "..." for chunk in context_chunks]  # Preview of sources
         }
         
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/rag/fusion_chat")
+async def rag_fusion_chat(request: FusionChatRequest):
+    """Chat using RAG-Fusion with optional web augmentation."""
+    try:
+        # Get or create pipeline for this API key
+        rag_pipeline = get_or_create_rag_pipeline(request.api_key)
+
+        print(f"RAG-Fusion Query: {request.user_message}")
+
+        # Retrieve fused chunks (optionally with web)
+        context_chunks = rag_pipeline.rag_fusion(
+            query=request.user_message,
+            k=request.k or 5,
+            num_queries=request.num_queries or 4,
+            include_web=bool(request.include_web),
+            web_results=request.web_results or 3,
+        )
+
+        if not context_chunks:
+            raise HTTPException(status_code=400, detail="No relevant context found across fusion sources")
+
+        # Generate final answer
+        response = rag_pipeline.generate_rag_response(
+            request.user_message,
+            context_chunks,
+            model=request.model or "gpt-4.1-mini",
+        )
+
+        return {
+            "response": response,
+            "context_chunks_used": len(context_chunks),
+            "sources": [chunk[:160] + "..." for chunk in context_chunks],  # Slightly longer preview
+            "fusion": {
+                "num_queries": request.num_queries or 4,
+                "include_web": bool(request.include_web),
+            },
+        }
     except HTTPException:
         raise
     except Exception as e:
