@@ -9,7 +9,7 @@ interface DocumentInfo {
 
 export default function Home() {
   const [developerMessage, setDeveloperMessage] = useState(
-    'You are a professional instructor, that writes answers in professional kind tone to students that are eager to learn.'
+    'You are a helpful AI assistant. When users ask questions that could benefit from document analysis or web search, suggest they try the "📄 Upload Documents" mode for document-based queries or "🧪 Fusion (RAG-Fusion)" mode for enhanced search with web snippets. Always be professional and helpful.'
   );
   const [userInput, setUserInput] = useState('');
   const [apiKey, setApiKey] = useState('');
