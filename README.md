@@ -1,30 +1,6 @@
-<p align = "center" draggable=”false” ><img src="https://github.com/AI-Maker-Space/LLM-Dev-101/assets/37101144/d1343317-fa2f-41e1-8af1-1dbb18399719" 
-     width="200px"
-     height="auto"/>
-</p>
+## <h1 align="center" id="heading"> 👋 Welcome to the Chamaleon Chatbot 🦎 </h1>
 
-
-## <h1 align="center" id="heading"> 👋 Welcome to the AI Engineer Challenge</h1>
-
-## 🤖 Your First Vibe Coding LLM Application
-
-> If you need an introduction to `git`, or information on how to set up API keys for the tools we'll be using in this repository - check out our [Interactive Dev Environment for LLM Development](https://github.com/AI-Maker-Space/Interactive-Dev-Environment-for-AI-Engineers) which has everything you'd need to get started in this repository!
-
-In this repository, we'll walk you through the steps to create a LLM (Large Language Model) powered application with a vibe-coded frontend!
-
-Are you ready? Let's get started!
-
-<details>
-  <summary>🖥️ Accessing "gpt-4.1-mini" (ChatGPT) like a developer</summary>
-
-1. Head to [this notebook](https://colab.research.google.com/drive/1sT7rzY_Lb1_wS0ELI1JJfff0NUEcSD72?usp=sharing) and follow along with the instructions!
-
-2. Complete the notebook and try out your own system/assistant messages!
-
-That's it! Head to the next step and start building your application!
-
-</details>
-
+## 🤖 An GPT powered application
 
 <details>
   <summary>🏗️ Forking & Cloning This Repository</summary>
